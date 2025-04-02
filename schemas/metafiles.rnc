@@ -32,7 +32,7 @@ metameta_attrs = (attribute meta-manager {text} | attribute meta-manager.add {te
 
 metadata_attrs =
     (attribute creator {text} | attribute creator.add {text})?,
-    (attribute date {xsd:date} | attribute date.add {text})?,
+    (attribute date {xsd:date} | attribute date.add {xsd:date})?,
     (attribute description {text} | attribute description.add {text})?,
     (attribute title {text} | attribute title.add {text})?,
     (attribute prefix {text} | attribute prefix.add {text})?

@@ -30,53 +30,50 @@ def list_files(base_dir: Union[str, Path]) -> Iterator[Tuple[str, str]]:
         if path.is_file():
             rel_dir_path = path.parent.relative_to(base_path)
             rel_dir = '' if rel_dir_path == Path('.') else str(rel_dir_path)
-            yield "/" + rel_dir, path.name
+            yield rel_dir, path.name
 
 
 def resolveConflict(e: ConflictError, session: Session, strict:bool = False):
-    level = LogLevel.Error if strict else LogLevel.Warning
-    if e.existing_record.digest != e.new_record.digest:
-        LogRecord.write_log(session, level, "file changed",
-                            e.existing_record.local_path,
-                            old_value=e.existing_record.digest.hex().upper(),
-                            new_value=e.new_record.digest.hex().upper())
-    if e.existing_record.metadata_data != e.new_record.metadata_data:
-        LogRecord.write_log(session, level,"metadata changed",
-                            e.existing_record.local_path,
-                            old_value=str(e.existing_record.metadata_data),
-                            new_value=str(e.new_record.metadata_data))
-    if e.existing_record.linkdata != e.new_record.linkdata:
-        LogRecord.write_log(session, level,"link metadata changed",
-                            e.existing_record.local_path,
-                            old_value=str(e.existing_record.linkdata),
-                            new_value=str(e.new_record.linkdata))
-    if not strict:
-        FileRecord.update(session, e.new_record)
+    with session.begin():
+        logging.info(f"updating conflict. old:{e.existing_record} new:{e.new_record}")
+        level = LogLevel.Error if strict else LogLevel.Warning
+        if e.existing_record.digest != e.new_record.digest:
+            LogRecord.write_log(session, level, "failed attempt to change file" if strict else "file changed",
+                                e.existing_record.local_path,
+                                old_value=e.existing_record.digest.hex().upper(),
+                                new_value=e.new_record.digest.hex().upper())
+        if e.existing_record.metadata_data != e.new_record.metadata_data:
+            LogRecord.write_log(session, level, "failed attempt to change metadata" if strict else "metadata changed",
+                                e.existing_record.local_path,
+                                old_value=str(e.existing_record.metadata_data),
+                                new_value=str(e.new_record.metadata_data))
+        if e.existing_record.linkdata != e.new_record.linkdata:
+            LogRecord.write_log(session, level, "failed attempt to change link metadata" if strict else "link metadata changed",
+                                e.existing_record.local_path,
+                                old_value=str(e.existing_record.linkdata),
+                                new_value=str(e.new_record.linkdata))
+        if not strict:
+            FileRecord.update(session, e.new_record)
 
-def process_links(session: Session):
-    session.query()
+def update(naan:str, data_path:Path, metafile:Path, database_uri: str):
+    session = initialize_database(database_uri)
 
-
-if __name__ == "__main__":
-    naan = "77298"
-
-    session = initialize_database()
-
-    logging.basicConfig(filename='test.log', filemode="w", level=logging.INFO)
-    for rel_dir, file_name in list_files(Path("test")):
-        print("-" * 16)
-        print(rel_dir, file_name)
-        links, meta = parse_metadata("test/files.xml", rel_dir, file_name)
-        print(links)
+    for rel_dir, file_name in list_files(data_path):
+        links, meta = parse_metadata(metafile, "/" + rel_dir, file_name)
         shoulder = meta["mfterms:prefix"]
         local = bcode(file_name)
         ark = ArkIdentifier(naan, shoulder, local)
-        hash = hash_file(Path("./test/"+rel_dir, file_name), "sha256")
+        hash = hash_file(data_path / rel_dir / file_name, "sha256")
         r = FileRecord(ark_base_name=ark.locid, local_path=normalize_path(rel_dir + "/" + file_name),
-                   digest=hash, metadata_data=meta, linkdata={"files": [link.to_dict() for link in links]})
+                       digest=hash, metadata_data=meta, linkdata={"files": [link.to_dict() for link in links]})
         try:
             FileRecord.insert_if_new_or_identical(session, r)
         except ConflictError as e:
             resolveConflict(e, session)
 
-        process_links(session)
+
+if __name__ == "__main__":
+    ki_naan = "77298"
+    logging.basicConfig(filename='test.log', filemode="w", level=logging.INFO)
+    update(ki_naan, Path("test"), Path("test")/"metafile.xml",
+           "sqlite:///databases/metafiles.db")

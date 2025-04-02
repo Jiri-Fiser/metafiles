@@ -14,6 +14,27 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 from datetime import datetime
+import logging
+
+class ReprMixin:
+    # Seznam dvojic (datový typ, formátovací funkce)
+    __repr_formatters__ = [
+        (datetime, lambda dt: dt.strftime("%Y-%m-%d %H:%M")),  # bez sekund
+        (bytes, lambda b: b.hex())  # hexadecimální výpis
+    ]
+
+    def __repr__(self):
+        values = []
+        for column in self.__table__.columns:
+            value = getattr(self, column.name)
+            for data_type, formatter in self.__repr_formatters__:
+                if isinstance(value, data_type):
+                    value = formatter(value)
+                    break
+            values.append(f"{column.name}={value!r}")
+        return f"<{self.__class__.__name__}({', '.join(values)})>"
+
+
 
 class ConflictError(Exception):
     """
@@ -80,12 +101,10 @@ class LogRecord(Base):
             detail=detail
         )
         session.add(record)
-        session.commit()
-        session.refresh(record)
         return record
 
 
-class FileRecord(Base):
+class FileRecord(ReprMixin, Base):
     __tablename__ = "file_records"
     __table_args__ = (UniqueConstraint("local_path"),)
 
@@ -122,28 +141,28 @@ class FileRecord(Base):
             ConflictError: if a record with the same primary key exists but differs.
         """
         ark_base_name = new_obj.ark_base_name
-        existing = session.get(cls, ark_base_name)
+        with session.begin():
+            existing = session.get(cls, ark_base_name)
 
-        if existing is None:
-            session.add(new_obj)
-            LogRecord.write_log(session, LogLevel.Info, "file added",
-                                new_obj.local_path)
-            # commited in write_log
-
-            return new_obj
-        else:
-            fields_to_compare = ["local_path", "digest", "metadata", "linkdata"]
-            is_identical = all(
-                getattr(existing, field) == getattr(new_obj, field)
-                for field in fields_to_compare
-            )
-
-            if is_identical:
-                return existing
+            if existing is None:
+                session.add(new_obj)
+                LogRecord.write_log(session, LogLevel.Info, "file added",
+                                    new_obj.local_path)
+                logging.info(f"insert record: {new_obj}")
+                return new_obj
             else:
-                raise ConflictError(new_obj, existing)
+                fields_to_compare = ["local_path", "digest", "metadata", "linkdata"]
+                is_identical = all(
+                    getattr(existing, field) == getattr(new_obj, field)
+                    for field in fields_to_compare
+                )
 
-def initialize_database(db_url: str = "sqlite:///file_records.db") -> Session:
+                if is_identical:
+                    return existing
+                else:
+                    raise ConflictError(new_obj, existing)
+
+def initialize_database(db_url: str) -> Session:
     """
     Initializes the database and creates the file_records table if it doesn't already exist.
 
@@ -154,5 +173,3 @@ def initialize_database(db_url: str = "sqlite:///file_records.db") -> Session:
     Base.metadata.create_all(engine)
     return Session(engine)
 
-if __name__ == "__main__":
-    initialize_database()

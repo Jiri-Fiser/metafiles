@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from lxml import etree as ET
 import fnmatch
 from collections import ChainMap
@@ -202,7 +204,7 @@ def collect_files(collector: List[Mapping[str, List[str]]],
         process_links(link_collector, meta_element)
         log(meta_element, meta_path, file_path, file_name, meta_name, metadata, link_collector)
 
-def parse_metadata(xml_file: str, path: str, filename: str) -> Tuple[List[LinkInfo], Mapping[str, List[str]]]:
+def parse_metadata(xml_file: Path, path: str, filename: str) -> Tuple[List[LinkInfo], Mapping[str, List[str]]]:
     tree = ET.parse(xml_file)
     root = tree.getroot()
     collector = []
