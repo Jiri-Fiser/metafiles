@@ -36,7 +36,7 @@ class ArkIdentifier:
         Canonical form of ARK identifier (primary use: part of URLs)
         :return:
         """
-        return  ArkIdentifier.normalize_id(f"ark:/{self.naan}/{self.shoulder}{self.locid}")
+        return f"ark:/{self.naan}/{self.shoulder}{ArkIdentifier.normalize_id(self.locid)}"
 
     @staticmethod
     def normalize_id(ident: str) -> str:

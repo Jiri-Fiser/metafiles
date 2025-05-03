@@ -10,6 +10,41 @@ from ark import ArkIdentifier
 from fntrans import bcode, bdecode
 from database import FileRecord, initialize_database, ConflictError, LogRecord, LogLevel
 
+import re
+from typing import Dict
+
+def substitute_placeholders(template: str, substitutions: Dict[str, str]) -> str:
+    """
+    Replaces occurrences of {key} in the input string with values from the substitutions dictionary.
+    Double braces {{ and }} are treated as literal curly braces.
+    Raises KeyError if any key in the template is not found in the substitutions dictionary.
+
+    Args:
+        template: The input string containing placeholders (e.g., "Hello, {name}!")
+        substitutions: A dictionary mapping keys to replacement values (e.g., {"name": "John"})
+
+    Returns:
+        A string with placeholders replaced and literal braces preserved.
+
+    Raises:
+        KeyError: If a placeholder key is not found in the substitutions dictionary.
+    """
+    # Temporarily replace double braces with placeholders
+    temp_template = template.replace('{{', '\x01').replace('}}', '\x02')
+
+    pattern = re.compile(r'\{([^{}]+)\}')
+
+    def replace_match(match: re.Match) -> str:
+        key = match.group(1)
+        if key not in substitutions:
+            raise KeyError(f"Key '{key}' not found in substitutions.")
+        return substitutions[key]
+
+    substituted = pattern.sub(replace_match, temp_template)
+
+    # Restore literal braces
+    return substituted.replace('\x01', '{').replace('\x02', '}')
+
 
 def list_files(base_dir: Union[str, Path]) -> Iterator[Tuple[str, str]]:
     """
@@ -62,9 +97,14 @@ def update(naan:str, data_path:Path, metafile:Path, database_uri: str):
         links, meta = parse_metadata(metafile, "/" + rel_dir, file_name)
         shoulder = meta["mfterms:prefix"]
         local = bcode(file_name)
-        ark = ArkIdentifier(naan, shoulder, local)
+        ark = ArkIdentifier(naan, shoulder[0], local)
         hash = hash_file(data_path / rel_dir / file_name, "sha256")
-        r = FileRecord(ark_base_name=ark.locid, local_path=normalize_path(rel_dir + "/" + file_name),
+        substitutions = {"hash": hash.hex(), "ark": str(ark)}
+        print(meta)
+        meta = {key: [substitute_placeholders(s, substitutions) for s in string_list]
+            for key, string_list in meta.items()}
+        print(meta)
+        r = FileRecord(ark_base_name=repr(ark), local_path=normalize_path(rel_dir + "/" + file_name),
                        digest=hash, metadata_data=meta, linkdata={"files": [link.to_dict() for link in links]})
         try:
             FileRecord.insert_if_new_or_identical(session, r)

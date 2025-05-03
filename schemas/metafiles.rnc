@@ -1,6 +1,15 @@
 default namespace = "http://ki.ujep.cz/metafiles"
+namespace mfile = "http://ki.ujep.cz/metafiles"
 namespace dc = "http://purl.org/dc/elements/1.1/"
 namespace dcterms = "http://purl.org/dc/terms/"
+
+foreignElement =
+  element * - mfile:* {          # jméno: cokoli, ale ne v prázdném NS
+    ( attribute * { text }       # libovolný atribut
+    | text                       # prostý text
+    | foreignElement             # nebo další cizí prvek
+    )*                           # v libovolném počtu/pořadí
+  }
 
 dc_all = "dcterms:title" | "dcterms:creator" | "dcterms:subject" | "dcterms:description" | "dcterms:publisher" |
   "dcterms:contributor" | "dcterms:date" | "dcterms:type" | "dcterms:format" | "dcterms:identifier" |
@@ -40,13 +49,11 @@ metadata_attrs =
 
 metadata_elem = element metadata {
      (element set {
-           attribute type { dc_all },
-            text
+           (attribute type { dc_all }, text) | foreignElement
      }*
      &
      element add {
-           attribute type { dc_all },
-            text
+           (attribute type { dc_all }, text) | foreignElement
      }*)
 }
 

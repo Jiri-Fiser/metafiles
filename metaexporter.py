@@ -1,4 +1,4 @@
-from rdflib import Graph, URIRef, Literal, Namespace
+from rdflib import Graph, URIRef, Literal, Namespace, XSD
 from rdflib.namespace import DC, RDF
 from typing import Dict, List
 
@@ -13,12 +13,14 @@ def dict_to_rdf(data: Dict[str, List[str]], subject_uri: str = "http://example.o
     """
     g = Graph()
     subject = URIRef(subject_uri)
+    print("****")
 
     # Define known namespace prefixes
     prefix_map = {
         'dc': DC,
-        'rdf': RDF
-        # Add more known prefixes here if needed
+        'rdf': RDF,
+        'spdx' : Namespace("http://spdx.org/rdf/terms#"),
+        'dcat': Namespace("http://www.w3.org/ns/dcat#"),
     }
 
     for full_key, values in data.items():
@@ -33,10 +35,15 @@ def dict_to_rdf(data: Dict[str, List[str]], subject_uri: str = "http://example.o
         if prefix not in prefix_map:
             continue  # Unknown prefix, skip or log warning
 
+        print(prefix, local)
+
         predicate_ns = prefix_map[prefix]
         predicate = predicate_ns[local]
 
         for value in values:
-            g.add((subject, predicate, Literal(value)))
+            if not value.startswith("__xml__:"):
+                g.add((subject, predicate, Literal(value)))
+            else:
+                g.add((subject, predicate, Literal(value[8:], datatype=RDF.XMLLiteral)))
 
     return g

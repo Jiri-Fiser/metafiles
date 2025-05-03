@@ -12,6 +12,23 @@ logger = logging.getLogger(__name__)
 
 ns = {"ns": "http://ki.ujep.cz/metafiles"}
 
+uri_ns = {"http://purl.org/dc/elements/1.1/" : "dc",
+          "http://purl.org/dc/terms/": "dcterms",
+          "http://spdx.org/rdf/terms#" : "spdx",
+          "http://www.w3.org/ns/dcat#" : "dcat"}
+
+def clark_to_qname(tag: str, mapping: Dict[str, str]) -> str:
+    """
+    '{uri}local'  →  'prefix:local'
+    """
+    if not tag.startswith('{'):
+        return tag                                # žádný namespace
+    q = ET.QName(tag)                             # rozparsuje na uri/local
+    prefix = mapping.get(q.namespace)
+    if prefix is None:                            # URI neznáme
+        return tag                                # vrátíme beze změny
+    return f"{prefix}:{q.localname}" if prefix else q.localname
+
 @dataclass
 class LinkInfo:
     type: str
@@ -107,6 +124,21 @@ def set_attribute(metadata: Dict[str, List[str]],
 
     metadata[meta_name] = [value]
 
+def extra_key_value(element: ET.Element) -> Tuple[str, str]:
+    element = element[0]
+    meta_name = clark_to_qname(element.tag, uri_ns)
+    frag = deepcopy(element)
+    ET.cleanup_namespaces(frag, top_nsmap={})
+    value = ET.tostring(frag, encoding='unicode',
+                        method="xml",
+                        xml_declaration=False,
+                        pretty_print=False)
+    return meta_name, value
+
+def set_extra_attribute(metadata: Dict[str, List[str]], element: ET.Element) -> None:
+    meta_name, value = extra_key_value(element)
+    metadata[meta_name] = ["__xml__:" + value]
+
 def append_attribute(metadata: Dict[str, List[str]],
                      element: ET.Element, attribute_name: Optional[str], meta_name: str):
     if attribute_name is None:
@@ -118,6 +150,14 @@ def append_attribute(metadata: Dict[str, List[str]],
 
     if meta_name in metadata:
         metadata[meta_name].append(value)
+    else:
+        metadata[meta_name] = [value]
+
+def append_extra_attribute(metadata: Dict[str, List[str]],
+                           element: ET.Element) -> None:
+    meta_name, value = extra_key_value(element)
+    if meta_name in metadata:
+        metadata[meta_name].append("__xml__:" + value)
     else:
         metadata[meta_name] = [value]
 
@@ -141,9 +181,17 @@ def process_metadata(metadata: Dict[str, List[str]], meta_element: ET.Element):
     if extra_meta := meta_element.xpath("ns:metadata", namespaces=ns):
         for child in extra_meta[0]:
             if child.tag == f"{{{ns['ns']}}}set":
-                set_attribute(metadata, child, None, child.get("type"))
+                if len(child) == 0: # nemá dětské elementy
+                    set_attribute(metadata, child, None, child.get("type"))
+                else:
+                    set_extra_attribute(metadata, child)
             elif child.tag == f"{{{ns['ns']}}}add":
-                append_attribute(metadata, child, None, child.get("type"))
+                if len(child) == 0:
+                    append_attribute(metadata, child, None, child.get("type"))
+                else:
+                    append_extra_attribute(metadata, child)
+            else:
+                raise ValueError(f"Unsupported element in metadata section {child.tag}")
 
     return metadata
 

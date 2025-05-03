@@ -12,9 +12,14 @@ from sqlalchemy import (
     UniqueConstraint,
     text
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session, sessionmaker
 from datetime import datetime
 import logging
+
+def get_session(db_url: str):
+    engine = create_engine(db_url, echo=False)
+    Session = sessionmaker(bind=engine)
+    return Session()
 
 class ReprMixin:
     # Seznam dvojic (datový typ, formátovací funkce)
