@@ -1,9 +1,18 @@
 from rdflib import Graph, URIRef, Literal, BNode
 from rdflib.namespace import DC, RDF, DCTERMS, DCAT, Namespace
 from typing import Dict, List
+
 from metaparser import LinkInfo
 from xml.etree.ElementTree import Element
 import xml.etree.ElementTree as ET
+
+prefix_map = {
+    'dc': DC,
+    'dcterms': DCTERMS,
+    'rdf': RDF,
+    'spdx': Namespace("http://spdx.org/rdf/terms#"),
+    'dcat': DCAT,
+}
 
 def extract_nsmap(xml_string: str) -> dict:
     """
@@ -75,7 +84,7 @@ def addSubnode(g: Graph, subject, fragment:str):
     etree_to_rdf(g, subject, root, ns_map)
 
 def meta_to_rdf(data: Dict[str, List[str]],
-                links: List[LinkInfo],
+                links: Dict[str, List[LinkInfo]],
                 subject_uri: str) -> Graph:
     """
     Converts a dictionary with prefixed RDF terms into an RDF graph,
@@ -88,16 +97,31 @@ def meta_to_rdf(data: Dict[str, List[str]],
     g = Graph()
     subject = URIRef(subject_uri)
 
-    # Define known namespace prefixes
-    prefix_map = {
-        'dc': DC,
-        'dcterms': DCTERMS,
-        'rdf': RDF,
-        'spdx': Namespace("http://spdx.org/rdf/terms#"),
-        'dcat': DCAT,
-    }
+    add_meta_attrs(data, g, subject)
 
-    for full_key, values in data.items():
+    for i, link in enumerate(links["files:"]):
+        prefix, local = link["type"].split(":", 1)
+
+        if prefix not in prefix_map:
+            continue  # Unknown prefix, skip or log warning
+
+        predicate_ns = prefix_map[prefix]
+        predicate = predicate_ns[local]
+        value = link["ark"]
+
+        if link["metadata"]:
+            relation_uri = f"#link{i}"
+            relation_target = URIRef(relation_uri)
+            g.add((subject, DCTERMS.relation, relation_target))
+            g.add((relation_target, predicate, URIRef(value)))
+            add_meta_attrs(link["metadata"], g, relation_target)
+        else:
+            g.add((subject, predicate, Literal(value)))
+
+    return g
+
+def add_meta_attrs(attr, g, node):
+    for full_key, values in attr.items():
         if full_key.startswith("mfterms:"):
             continue  # Skip private/internal metadata
 
@@ -114,8 +138,6 @@ def meta_to_rdf(data: Dict[str, List[str]],
 
         for value in values:
             if not value.startswith("__xml__:"):
-                g.add((subject, predicate, Literal(value)))
+                g.add((node, predicate, Literal(value)))
             else:
-                addSubnode(g, subject, value[8:])
-
-    return g
+                addSubnode(g, node, value[8:])

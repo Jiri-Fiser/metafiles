@@ -2,18 +2,18 @@ import hashlib
 import blake3
 from timeit import timeit
 
-def hash_file(filename, algorithm):
+def hash_file(file, algorithm):
     hash = hashlib.new(algorithm)
-    with open(filename, "rb") as f:
+    with open(file, "rb") as f:
         for chunk in iter(lambda: f.read(1024*1024), b""):
             hash.update(chunk)
     digest = hash.digest()
     #print(" ", digest)
     return digest
 
-def hash_file_blake3(filename):
+def hash_file_blake3(file):
     file_hasher = blake3.blake3(max_threads=4)
-    file_hasher.update_mmap(filename)
+    file_hasher.update_mmap(file)
     digest = file_hasher.digest()
     #print(" ", digest)
     return digest

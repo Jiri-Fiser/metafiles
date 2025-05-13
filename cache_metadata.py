@@ -1,3 +1,5 @@
+from pathlib import Path
+from typing import Dict
 from urllib.parse import urlunparse, urlencode
 
 from sqlalchemy import create_engine, Column, Text
@@ -38,10 +40,37 @@ class FileCache(Base):
         # Vrácení nové session
         return SessionLocal()
 
+
+def substitute_links(linkdata: Dict, root: Path, ark_dict: Dict[str, str], local_path: str):
+    local_path = local_path.lstrip("/")
+    new_records = []
+    for record in linkdata["files"]:
+        link_pattern = record["path"]
+        path = Path(local_path.lstrip("/")).parent / link_pattern
+        for file in root.glob(str(path)):
+            link_path = file.resolve().relative_to(root)
+            new_record = dict(record)
+            new_record["ark"] = ark_dict[str(link_path)]
+            new_record["filename"] = str(link_path)
+            new_records.append(new_record)
+    return {"files:": new_records}
+
+
+def substitute_paths(record: FileRecord, root: Path, ark_dict: Dict[str, str]):
+    new_linkdata = substitute_links(record.linkdata, root, ark_dict, record.local_path)
+    record.linkdata = new_linkdata
+
+
+
 def update_cache(cache_session, metafile_session):
+    ark_dict = {record.local_path: record.ark_base_name
+                for record in metafile_session.query(FileRecord).all()}
+
     for record in metafile_session.query(FileRecord).all():
+        substitute_paths(record, Path("/home/jfiser/metafiles/test"), ark_dict)
         rdf = meta_to_rdf(record.metadata_data, record.linkdata, record.ark_base_name)
         rdf_xml = rdf.serialize(format="pretty-xml")
+        print(record.linkdata)
         print(rdf_xml)
         query = urlencode({"path" : record.local_path})
         url = urlunparse(("https", "example.com", "sourcer", "", query, ""))
