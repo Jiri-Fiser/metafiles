@@ -1,0 +1,49 @@
+<dir xmlns="http://ki.ujep.cz/metafiles"
+     xmlns:dcterms="http://purl.org/dc/terms/"
+     xmlns:vcard="http://www.w3.org/2006/vcard/ns#"
+     xmlns:dcat="http://www.w3.org/ns/dcat#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:spdx="http://spdx.org/rdf/terms#"
+     meta-manager="JF"
+     creator="Jiří Fišer"
+     date="2025-03-31"
+     description="testovací data"
+     prefix="ds0">
+    <metadata>
+        <set type="dc:identifier">{ark}</set>
+        <set type="dcterms:accessRights">https://publications.europa.eu/resource/authority/access-right/PUBLIC</set>
+        <set>
+             <spdx:checksum>
+                <spdx:Checksum>
+                    <spdx:algorithm rdf:resource="http://spdx.org/rdf/terms#SHA-256"/>
+                    <spdx:checksumValue rdf:datatype="http://www.w3.org/2001/XMLSchema#hexBinary">{hash}</spdx:checksumValue>
+                </spdx:Checksum>
+            </spdx:checksum>
+        </set>
+        <set>
+        <dcat:contactPoint>
+              <vcard:Kind>
+                <vcard:fn>CSIRT</vcard:fn>
+                <vcard:hasEmail rdf:resource="mailto:csirt@ujep.cz"/>
+              </vcard:Kind>
+        </dcat:contactPoint>
+        </set>
+    </metadata>
+    <files pattern="*" recursive="true"/>
+    <files filename="readme.md">
+        <links>
+            <link type="dcterms:hasPart" path="doc/*.txt"/>
+        </links>
+    </files>
+    <dir path="doc"
+         creator.add="Přemysl Ránský"
+         description="testovací dokumenty">
+         <files pattern="*.txt">
+             <links>
+                 <link type="dcterms:isPartOf" path="../readme.md"
+                       description="validováno"
+                       creator="#path(/validators/x)"/>
+             </links>
+         </files>
+    </dir>
+</dir>

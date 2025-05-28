@@ -1,4 +1,5 @@
 from pathlib import Path
+from re import match
 from typing import Dict
 from urllib.parse import urlunparse, urlencode
 
@@ -40,19 +41,24 @@ class FileCache(Base):
         # Vrácení nové session
         return SessionLocal()
 
-
 def substitute_links(linkdata: Dict, root: Path, ark_dict: Dict[str, str], local_path: str):
-    local_path = local_path.lstrip("/")
     new_records = []
     for record in linkdata["files"]:
         link_pattern = record["path"]
-        path = Path(local_path.lstrip("/")).parent / link_pattern
+        print(link_pattern, local_path, root)
+        path = Path(local_path).parent / link_pattern
         for file in root.glob(str(path)):
             link_path = file.resolve().relative_to(root)
             new_record = dict(record)
             new_record["ark"] = ark_dict[str(link_path)]
             new_record["filename"] = str(link_path)
             new_records.append(new_record)
+            for term, values in record["metadata"].items():
+                for value in values:
+                    if m:= match(r"#path\((.*)\)\s*", value):
+                        pass
+                        #print(m.group(1))
+
     return {"files:": new_records}
 
 
