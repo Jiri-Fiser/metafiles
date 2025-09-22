@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Iterator, Tuple, Union
-
 from sqlalchemy.orm import Session
 
 from filehash import hash_file
@@ -12,6 +11,7 @@ from database import FileRecord, initialize_database, ConflictError, LogRecord, 
 
 import re
 from typing import Dict
+from configparser import ConfigParser
 
 def substitute_placeholders(template: str, substitutions: Dict[str, str]) -> str:
     """
@@ -92,8 +92,10 @@ def update(naan:str, data_path:Path, metafile:Path, database_uri: str):
     session = initialize_database(database_uri)
 
     for path in list_files(data_path):
-        print(path)
+        if path.name == "metafile.xml":
+            continue
         links, meta = parse_metadata(metafile, path, data_path)
+        print(path)
         print(meta)
         print(links)
         shoulder = meta["mfterms:prefix"]
@@ -115,7 +117,12 @@ def update(naan:str, data_path:Path, metafile:Path, database_uri: str):
 
 
 if __name__ == "__main__":
-    ki_naan = "77298"
-    logging.basicConfig(filename='test.log', filemode="w", level=logging.INFO)
-    update(ki_naan, Path("/home/jfiser/metafiles/test"), Path("/home/jfiser/metafiles/test")/"metafile.xml",
-           "sqlite:///databases/metafiles.db")
+    config = ConfigParser()
+    config.read("config.ini")
+    ki_naan = config["ki"]["Naan"]
+    path = Path(config["FIDO_public"]["Path"])
+    metafiles_db = config["FIDO_public"]["Database"]
+    cache_db = config["FIDO_public"][""]
+    log = config["FIDO_public"]["Log"]
+    logging.basicConfig(filename=log, filemode="w", level=logging.INFO)
+    update(ki_naan, path, path/"metafile.xml",metafiles_db)
