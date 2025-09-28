@@ -138,6 +138,7 @@ def process_metadata(metadata: Dict[str, List[str]], meta_element: ET.Element):
     set_attribute(metadata, meta_element, "title", "dc:title")
     set_attribute(metadata, meta_element, "prefix", "mfterms:prefix")
     set_attribute(metadata, meta_element, "meta-manager", "mfterms:meta-manager")
+    set_attribute(metadata, meta_element, "data-policy", "mfterms:data-policy")
 
     append_attribute(metadata, meta_element, "creator.add", "dc:creator")
     append_attribute(metadata, meta_element, "date.add", "dc:date")
