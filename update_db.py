@@ -1,17 +1,18 @@
+import datetime
 from pathlib import Path
 from typing import Iterator, Tuple, Union
-from sqlalchemy.orm import Session
 
-from filehash import hash_file
+from filehash import hash_file, hash_filename
 from metaparser import parse_metadata
 import logging
 from ark import ArkIdentifier
-from fntrans import bcode, bdecode
-from database import FileRecord, initialize_database, ConflictError, LogRecord, LogLevel
+from fntrans import bcode
+from database import FileRecord
 
 import re
 from typing import Dict
 from configparser import ConfigParser
+
 
 def substitute_placeholders(template: str, substitutions: Dict[str, str]) -> str:
     """
@@ -66,63 +67,41 @@ def list_files(base_dir: Union[str, Path]) -> Iterator[Path]:
             yield path
 
 
-def resolveConflict(e: ConflictError, session: Session, strict:bool = False):
-    with session.begin():
-        logging.info(f"updating conflict. old:{e.existing_record} new:{e.new_record}")
-        level = LogLevel.Error if strict else LogLevel.Warning
-        if e.existing_record.digest != e.new_record.digest:
-            LogRecord.write_log(session, level, "failed attempt to change file" if strict else "file changed",
-                                e.existing_record.local_path,
-                                old_value=e.existing_record.digest.hex().upper(),
-                                new_value=e.new_record.digest.hex().upper())
-        if e.existing_record.metadata_data != e.new_record.metadata_data:
-            LogRecord.write_log(session, level, "failed attempt to change metadata" if strict else "metadata changed",
-                                e.existing_record.local_path,
-                                old_value=str(e.existing_record.metadata_data),
-                                new_value=str(e.new_record.metadata_data))
-        if e.existing_record.linkdata != e.new_record.linkdata:
-            LogRecord.write_log(session, level, "failed attempt to change link metadata" if strict else "link metadata changed",
-                                e.existing_record.local_path,
-                                old_value=str(e.existing_record.linkdata),
-                                new_value=str(e.new_record.linkdata))
-        if not strict:
-            FileRecord.update(session, e.new_record)
-
 def update(naan:str, data_path:Path, metafile:Path, database_uri: str):
-    session = initialize_database(database_uri)
+    session = FileRecord.initialize_database(database_uri)()
 
     for path in list_files(data_path):
         if path.name == "metafile.xml":
             continue
         links, meta = parse_metadata(metafile, path, data_path)
-        print(path)
-        print(meta)
-        print(links)
+        local_path = str(path.relative_to(data_path))
+        print(local_path)
+        #print(meta)
+        #print(links)
         shoulder = meta["mfterms:prefix"]
-        local = bcode(path.name)
+        # local = bcode(local_path)
+        local = hash_filename(local_path, "shake_128")
+        print(local)
         ark = ArkIdentifier(naan, shoulder[0], local)
+        print(ark)
         hash = hash_file(path, "sha256")
         substitutions = {"hash": hash.hex(), "ark": str(ark)}
         meta = {key: [substitute_placeholders(s, substitutions) for s in string_list]
             for key, string_list in meta.items()}
-        local_path = str(path.relative_to(data_path))
-        print(local_path)
-        print()
         r = FileRecord(ark_base_name=repr(ark), local_path=local_path,
-                       digest=hash, metadata_data=meta, linkdata={"files": [link.to_dict() for link in links]})
-        try:
-            FileRecord.insert_if_new_or_identical(session, r)
-        except ConflictError as e:
-            resolveConflict(e, session)
+                       digest=hash, metadata_data=meta, linkdata={"files": [link.to_dict() for link in links]},
+                       created=datetime.datetime.now(), updated=datetime.datetime.now())
+        with session.begin():
+            r.insert(session)
 
 
 if __name__ == "__main__":
     config = ConfigParser()
     config.read("config.ini")
-    ki_naan = config["ki"]["Naan"]
-    path = Path(config["FIDO_public"]["Path"])
-    metafiles_db = config["FIDO_public"]["Database"]
-    cache_db = config["FIDO_public"][""]
-    log = config["FIDO_public"]["Log"]
+    ki_naan = config["Storage"]["Naan"]
+    location = config[config["Storage"]["Location"]]
+    path = Path(location["Path"])
+    metafiles_db = location["Database"]
+    log = location["Log"]
     logging.basicConfig(filename=log, filemode="w", level=logging.INFO)
     update(ki_naan, path, path/"metafile.xml",metafiles_db)

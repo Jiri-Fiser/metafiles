@@ -233,6 +233,7 @@ def collect_files(collector: List[Mapping[str, List[str]]],
 
 def parse_metadata(xml_file: Path, path: Path, root_path:Path) -> Tuple[List[LinkInfo], Mapping[str, List[str]]]:
     tree = ET.parse(xml_file)
+    tree.xinclude()
     root = tree.getroot()
     collector = []
     link_collector = []

@@ -70,11 +70,11 @@ def substitute_paths(record: FileRecord, root: Path, ark_dict: Dict[str, str]):
 
 
 
-def update_cache(cache_session, metafile_session, config):
+def update_cache(cache_session, metafile_session, location):
     ark_dict = {record.local_path: record.ark_base_name
                 for record in metafile_session.query(FileRecord).all()}
 
-    path = Path(config["FIDO_public"]["Path"])
+    path = Path(location["Path"])
     for record in metafile_session.query(FileRecord).all():
         substitute_paths(record, path, ark_dict)
         rdf = meta_to_rdf(record.metadata_data, record.linkdata, record.ark_base_name)
@@ -82,9 +82,9 @@ def update_cache(cache_session, metafile_session, config):
         #print(record.linkdata)
         #print(rdf_xml)
         query = urlencode({"path" : record.local_path})
-        url_protocol = config["FIDO_public"]["Url_protocol"]
-        url_authority = config["FIDO_public"]["Url_authority"]
-        url_path = config["FIDO_public"]["Url_path"]
+        url_protocol = location["Url_protocol"]
+        url_authority = location["Url_authority"]
+        url_path = location["Url_path"]
         url = urlunparse((url_protocol, url_authority, url_path, "", query, ""))
         cache_row = FileCache(ark_id=record.ark_base_name, url=url, metadata_rdf=rdf_xml)
         cache_session.add(cache_row)
@@ -94,6 +94,7 @@ def update_cache(cache_session, metafile_session, config):
 if __name__ == "__main__":
     config = ConfigParser()
     config.read("config.ini")
-    metafiles_db = config["FIDO_public"]["Database"]
-    cache_db = config["FIDO_public"]["Cache"]
-    update_cache(FileCache.init_db(cache_db), get_session(metafiles_db), config)
+    location = config[config["Storage"]["Location"]]
+    metafiles_db = location["Database"]
+    cache_db = location["Cache"]
+    update_cache(FileCache.init_db(cache_db), get_session(metafiles_db), location)

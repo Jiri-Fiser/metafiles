@@ -2,6 +2,8 @@ import hashlib
 import blake3
 from timeit import timeit
 
+betabet = "bcdfghjkmprstvxz"
+
 def hash_file(file, algorithm):
     hash = hashlib.new(algorithm)
     with open(file, "rb") as f:
@@ -10,6 +12,21 @@ def hash_file(file, algorithm):
     digest = hash.digest()
     #print(" ", digest)
     return digest
+
+
+def hash_filename(filename, algorithm):
+    hash = hashlib.new(algorithm)
+    hash.update(filename.encode("utf-8"))
+    hex_digest = hash.hexdigest(12)
+    return "".join(betabet[int(ch, 16)] for ch in hex_digest)
+
+def betabet_to_hex(custom_str: str) -> str:
+    """
+    Convert a custom-encoded hash string back to standard hexadecimal.
+    """
+    REV_MAP = {ch: format(i, "x") for i, ch in enumerate(betabet)}
+    return "".join(REV_MAP[ch] for ch in custom_str)
+
 
 def hash_file_blake3(file):
     file_hasher = blake3.blake3(max_threads=4)
