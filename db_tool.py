@@ -2,11 +2,12 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, TypeVar
 
-from sqlalchemy import Integer, String, create_engine
+from sqlalchemy import Integer, Text, create_engine, UnicodeText
 from sqlalchemy.orm import Session, DeclarativeBase, Mapped, mapped_column, sessionmaker
 from sqlalchemy.inspection import inspect as sa_inspect
 
 from sqlalchemy import DateTime, Enum as SAEnum, Index, String, Text, func
+from data_policy import ConflictAction
 
 class Severity(Enum):
     """Severity level of the log entry."""
@@ -77,9 +78,9 @@ class ChangeLog(Base):
         server_default=Severity.INFO.value,
     )
 
-    old_value: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    new_value: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    old_value: Mapped[Optional[str]] = mapped_column(UnicodeText, nullable=True)
+    new_value: Mapped[Optional[str]] = mapped_column(UnicodeText, nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(UnicodeText, nullable=True)
 
     __table_args__ = (
         Index("ix_change_log_obj_attr_time", "object_id", "attribute", "created_at"),
@@ -143,11 +144,6 @@ def log_change(
     session.add(entry)
     return entry
 
-class ConflictAction(Enum):
-    IGNORE = "ignore"     # ponechat původní hodnotu (neupdateovat)
-    WARNING = "warning"   # updatovat a zalogovat varování
-    STRICT = "strict"     # vyhodit výjimku (celou operaci zrušit)
-    UPDATE = "update"     # updateovat tiše (default pro nevyjmenované atributy)
 
 T = TypeVar("T")
 

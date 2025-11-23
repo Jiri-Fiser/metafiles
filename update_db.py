@@ -1,12 +1,12 @@
 import datetime
 from pathlib import Path
-from typing import Iterator, Tuple, Union
+from typing import Iterator, Union, ChainMap
 
-from filehash import hash_file, hash_filename
+from data_policy import ConflictAction, parse_policy, get_localname, NameStrategy
+from filehash import hash_file
 from metaparser import parse_metadata
 import logging
 from ark import ArkIdentifier
-from fntrans import bcode
 from database import FileRecord
 
 import re
@@ -31,9 +31,9 @@ def substitute_placeholders(template: str, substitutions: Dict[str, str]) -> str
         KeyError: If a placeholder key is not found in the substitutions dictionary.
     """
     # Temporarily replace double braces with placeholders
-    temp_template = template.replace('{{', '\x01').replace('}}', '\x02')
+    temp_template = template.replace('{{%', '\x01').replace('%}}', '\x02')
 
-    pattern = re.compile(r'\{([^{}]+)\}')
+    pattern = re.compile(r'\{%([^{}]+)%}')
 
     def replace_match(match: re.Match) -> str:
         key = match.group(1)
@@ -44,7 +44,7 @@ def substitute_placeholders(template: str, substitutions: Dict[str, str]) -> str
     substituted = pattern.sub(replace_match, temp_template)
 
     # Restore literal braces
-    return substituted.replace('\x01', '{').replace('\x02', '}')
+    return substituted.replace('\x01', '{%').replace('\x02', '%}')
 
 
 def list_files(base_dir: Union[str, Path]) -> Iterator[Path]:
@@ -79,20 +79,25 @@ def update(naan:str, data_path:Path, metafile:Path, database_uri: str):
         #print(meta)
         #print(links)
         shoulder = meta["mfterms:prefix"]
-        # local = bcode(local_path)
-        local = hash_filename(local_path, "shake_128")
-        print(local)
+        policy = parse_policy(meta["mfterms:data-policy"][0])
+        name_strategy= policy.get("local_name_strategy", NameStrategy.FILENAME_HASH_12)
+        local = get_localname(path, data_path, name_strategy)
         ark = ArkIdentifier(naan, shoulder[0], local)
         print(ark)
         hash = hash_file(path, "sha256")
         substitutions = {"hash": hash.hex(), "ark": str(ark)}
+        # substitution
         meta = {key: [substitute_placeholders(s, substitutions) for s in string_list]
             for key, string_list in meta.items()}
+        # insertion/update
         r = FileRecord(ark_base_name=repr(ark), local_path=local_path,
-                       digest=hash, metadata_data=meta, linkdata={"files": [link.to_dict() for link in links]},
+                       digest=hash, meta=meta, links={"files": [link.to_dict() for link in links]},
                        created=datetime.datetime.now(), updated=datetime.datetime.now())
+
+        strictness_policy = dict(ChainMap({"created": ConflictAction.IGNORE, "updated": ConflictAction.UPDATE},
+                          policy["strictness"]))
         with session.begin():
-            r.insert(session)
+            r.insert(session, policy=strictness_policy)
 
 
 if __name__ == "__main__":

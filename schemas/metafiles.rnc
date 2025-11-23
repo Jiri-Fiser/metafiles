@@ -36,8 +36,10 @@ dc_ref =  "dcterms:relation" | "dcterms:isVersionOf" | "dcterms:hasVersion" |
                             "dcterms:hasFormat" | "dcterms:source" | "dcterms:conformsTo" |
                             "dc:relation" | "dc:source"
 
-metameta_attrs = (attribute meta-manager {text} | attribute meta-manager.add {text})?,
-(attribute meta-extractor {text} | attribute meta-extractor.add {text})?
+metameta_attrs =
+         (attribute meta-manager {text} | attribute meta-manager.add {text})?,
+          attribute data-policy {text}?,
+         (attribute meta-extractor {text} | attribute meta-extractor.add {text})?
 
 metadata_attrs =
     (attribute creator {text} | attribute creator.add {text})?,

@@ -47,15 +47,13 @@ class FileRecord(ReprMixin, Base):
     ark_base_name: Mapped[str] = mapped_column(Text, primary_key=True)
     local_path: Mapped[str] = mapped_column(Text, nullable=False)
     digest: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
-    metadata_data: Mapped[dict] = mapped_column(JSON, nullable=False)
-    linkdata: Mapped[dict] = mapped_column(JSON, nullable=False)
+    meta: Mapped[dict] = mapped_column(JSON, nullable=False)
+    links: Mapped[dict] = mapped_column(JSON, nullable=False)
     created: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
-    def insert(self, session):
-        upsert_with_policy(session, self,
-                           policy={"created": ConflictAction.IGNORE, "updated": ConflictAction.UPDATE},
-                           default_policy=ConflictAction.WARNING)
+    def insert(self, session, policy):
+        upsert_with_policy(session, self, policy, default_policy=ConflictAction.STRICT)
 
     @staticmethod
     def initialize_database(db_url: str) -> sessionmaker:

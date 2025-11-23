@@ -1,4 +1,6 @@
 import hashlib
+from pathlib import Path
+
 import blake3
 from timeit import timeit
 
@@ -10,14 +12,20 @@ def hash_file(file, algorithm):
         for chunk in iter(lambda: f.read(1024*1024), b""):
             hash.update(chunk)
     digest = hash.digest()
-    #print(" ", digest)
     return digest
 
+def hash_context(file: Path, algorithm, width):
+    hash = hashlib.new(algorithm)
+    with open(file, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            hash.update(chunk)
+    hex_digest = hash.hexdigest(width)
+    return "".join(betabet[int(ch, 16)] for ch in hex_digest)
 
-def hash_filename(filename, algorithm):
+def hash_filename(filename:str, algorithm:str, width: int):
     hash = hashlib.new(algorithm)
     hash.update(filename.encode("utf-8"))
-    hex_digest = hash.hexdigest(12)
+    hex_digest = hash.hexdigest(width)
     return "".join(betabet[int(ch, 16)] for ch in hex_digest)
 
 def betabet_to_hex(custom_str: str) -> str:
