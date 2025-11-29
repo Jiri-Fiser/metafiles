@@ -1,7 +1,7 @@
 from pathlib import Path
 from re import match
 from typing import Dict
-from urllib.parse import urlunparse, urlencode
+from urllib.parse import urlunparse, urlencode, quote
 
 from sqlalchemy import create_engine, Column, Text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
@@ -82,11 +82,13 @@ def update_cache(cache_session, metafile_session, location):
         rdf_xml = rdf.serialize(format="pretty-xml")
         #print(record.linkdata)
         #print(rdf_xml)
-        query = urlencode({"path" : record.local_path})
+        query = location["Url_query"]
         url_protocol = location["Url_protocol"]
         url_authority = location["Url_authority"]
-        url_path = location["Url_path"]
+        url_path = location["Url_path"].format(path=record.local_path,
+                                               enc_path=quote(record.local_path))
         url = urlunparse((url_protocol, url_authority, url_path, "", query, ""))
+        print(url)
         cache_row = FileCache(ark_id=record.ark_base_name, url=url, metadata_rdf=rdf_xml)
         cache_session.add(cache_row)
         cache_session.commit()
