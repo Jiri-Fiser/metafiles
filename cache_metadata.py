@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, Column, Text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from database import FileRecord, get_session
 from rdftools import meta_to_rdf
+from sqlite3_exporter import sqlite_table_to_json, sqlite_url_to_path
 
 from configparser import ConfigParser
 
@@ -98,3 +99,7 @@ if __name__ == "__main__":
     metafiles_db = location["Database"]
     cache_db = location["Cache"]
     update_cache(FileCache.init_db(cache_db), get_session(metafiles_db), location)
+    contents_file = location["Contents"]
+    sqlite_table_to_json(db_path=sqlite_url_to_path(cache_db),
+                         table_name="file_cache",
+                         output_path=contents_file)

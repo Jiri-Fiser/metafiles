@@ -66,7 +66,7 @@ class ConflictAction(Enum):
     IGNORE = "ignore"     # ponechat původní hodnotu (neupdateovat)
     WARNING = "warning"   # updatovat a zalogovat varování
     STRICT = "strict"     # vyhodit výjimku (celou operaci zrušit)
-    UPDATE = "update"     # updateovat tiše (default pro nevyjmenované atributy)
+    UPDATE = "update"     # updatovat tiše (default pro nevyjmenované atributy)
 
 class NameStrategy(Enum):
     FILENAME_HASH_12 = 0

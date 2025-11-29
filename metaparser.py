@@ -242,4 +242,4 @@ def parse_metadata(xml_file: Path, path: Path, root_path:Path) -> Tuple[List[Lin
     return (link_collector, transform_dict_values(ChainMap(*reversed(collector)),
                             {"mfterms:prefix": "", "mfterms:meta-manager": "+",
                                     "dc:description": "\n"},
-                           {"dc:creator": ","}))
+                           {"dc:creator": ",", "dc:contributor": ","}))

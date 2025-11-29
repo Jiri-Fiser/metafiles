@@ -13,15 +13,22 @@ import re
 from typing import Dict
 from configparser import ConfigParser
 
+def last_modified_iso(path: Path) -> str:
+    """
+    Return last modification time of the given file in ISO-8601 format (UTC).
+    """
+    ts = path.stat().st_mtime      # timestamp (float, seconds)
+    dt = datetime.datetime.fromtimestamp(ts, tz=datetime.timezone.utc)
+    return dt.isoformat()
+
 
 def substitute_placeholders(template: str, substitutions: Dict[str, str]) -> str:
     """
-    Replaces occurrences of {key} in the input string with values from the substitutions dictionary.
-    Double braces {{ and }} are treated as literal curly braces.
+    Replaces occurrences of {%key%} in the input string with values from the substitutions dictionary.
     Raises KeyError if any key in the template is not found in the substitutions dictionary.
 
     Args:
-        template: The input string containing placeholders (e.g., "Hello, {name}!")
+        template: The input string containing placeholders (e.g., "Hello, {%name%}!")
         substitutions: A dictionary mapping keys to replacement values (e.g., {"name": "John"})
 
     Returns:
@@ -73,19 +80,21 @@ def update(naan:str, data_path:Path, metafile:Path, database_uri: str):
     for path in list_files(data_path):
         if path.name == "metafile.xml":
             continue
+        if path.name == "contents.json":
+            continue
         links, meta = parse_metadata(metafile, path, data_path)
         local_path = str(path.relative_to(data_path))
         print(local_path)
-        #print(meta)
         #print(links)
         shoulder = meta["mfterms:prefix"]
         policy = parse_policy(meta["mfterms:data-policy"][0])
         name_strategy= policy.get("local_name_strategy", NameStrategy.FILENAME_HASH_12)
         local = get_localname(path, data_path, name_strategy)
         ark = ArkIdentifier(naan, shoulder[0], local)
-        print(ark)
         hash = hash_file(path, "sha256")
-        substitutions = {"hash": hash.hex(), "ark": str(ark)}
+        substitutions = {"hash": hash.hex(), "ark": str(ark),
+                         "localName": path.name, "mtime": last_modified_iso(path),
+                         "size": str(path.stat().st_size)}
         # substitution
         meta = {key: [substitute_placeholders(s, substitutions) for s in string_list]
             for key, string_list in meta.items()}

@@ -5,18 +5,22 @@
      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
      xmlns:spdx="http://spdx.org/rdf/terms#"
      meta-manager="JF"
-     creator="Jiří Fišer"
-     date="2025-03-31"
-     description="testovací data"
+     title="{%localName%}"
+     date="{%mtime%}"
+     data-policy='{"strictness": {}}'
      prefix="ds0">
     <metadata>
-        <set type="dc:identifier">{ark}</set>
+        <set type="dc:identifier">{%ark%}</set>
+        <set type="dc:publisher">ODAS University of J.E. Purkyne, Ústí nad Labem, Czechia, odas.ki.ujep.cz"</set>
+        <set type="dc:language">en</set>
+        <set type="dc:rights">CC-BY 4.0</set>
+        <set type="dcterms:extent">{%size%} bytes</set>
         <set type="dcterms:accessRights">https://publications.europa.eu/resource/authority/access-right/PUBLIC</set>
         <set>
              <spdx:checksum>
                 <spdx:Checksum>
                     <spdx:algorithm rdf:resource="http://spdx.org/rdf/terms#SHA-256"/>
-                    <spdx:checksumValue rdf:datatype="http://www.w3.org/2001/XMLSchema#hexBinary">{hash}</spdx:checksumValue>
+                    <spdx:checksumValue rdf:datatype="http://www.w3.org/2001/XMLSchema#hexBinary">{%hash%}</spdx:checksumValue>
                 </spdx:Checksum>
             </spdx:checksum>
         </set>
@@ -29,21 +33,22 @@
         </dcat:contactPoint>
         </set>
     </metadata>
-    <files pattern="*" recursive="true"/>
-    <files filename="readme.md">
-        <links>
-            <link type="dcterms:hasPart" path="doc/*.txt"/>
-        </links>
-    </files>
-    <dir path="doc"
-         creator.add="Přemysl Ránský"
-         description="testovací dokumenty">
-         <files pattern="*.txt">
-             <links>
-                 <link type="dcterms:isPartOf" path="../readme.md"
-                       description="validováno"
-                       creator="#path(/validators/x)"/>
-             </links>
+
+    <dir path="Lungs_results"
+         creator="Jiří Škvára">
+         <metadata>
+         <set type="dc:description">
+             A case study to validate the proposed medical image segmentation method based on supervised machine-learning pixel classification. This study uses a public dataset of chest X-ray images published as:
+Jaeger S, Karargyris A, Candemir S, Folio L, Siegelman J, Callaghan F, Xue Z, Palaniappan K, Singh RK, Antani S, Thoma G, Wang YX, Lu PX, McDonald CJ. Automatic tuberculosis screening using chest radiographs. IEEE Trans Med Imaging. 2014 Feb;33(2):233-45. doi: 10.1109/TMI.2013.2284099. PMID: 24108713
+and
+Candemir S, Jaeger S, Palaniappan K, Musco JP, Singh RK, Xue Z, Karargyris A, Antani S, Thoma G, McDonald CJ. Lung segmentation in chest radiographs using anatomical atlases with nonrigid registration. IEEE Trans Med Imaging. 2014 Feb;33(2):577-90. doi: 10.1109/TMI.2013.2290491. PMID: 24239990
+         </set>
+         </metadata>
+         <files pattern="*" recursive="true"/>
+         <files pattern="*.png" recursive="true">
+             <metadata>
+                 <set type="dc:contributor">Jaeger S., Karargyris A., Candemir S., Folio L., Siegelman J., Callaghan F., Xue Z., Palaniappan K., Singh R.K., Antani S., Thoma G., Wang Y.X., Lu P.X., McDonald C.J., Musco J.P.</set>
+             </metadata>
          </files>
     </dir>
 </dir>
