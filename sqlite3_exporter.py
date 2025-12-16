@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Union
 from urllib.parse import urlparse
+import gzip
 
 
 def sqlite_url_to_path(url: str) -> Path:
@@ -56,9 +57,10 @@ def sqlite_table_to_json(
         ]
 
         data = {table_name: rows}
+        output_path = output_path.with_suffix(output_path.suffix + ".gz")
 
         # zápis JSON do souboru
-        with output_path.open("w", encoding="utf-8") as f:
+        with gzip.open(output_path, "wt", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
     finally:
